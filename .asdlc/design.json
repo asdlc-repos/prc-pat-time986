@@ -1,0 +1,27 @@
+{
+  "overview": "A single-service architecture providing UTC time via HTTP. The time-service component exposes a REST API on port 9090 with a /time endpoint that returns RFC3339-formatted timestamps and a /health endpoint for liveness checks. No external dependencies or databases are required.",
+  "requirements": [
+    "The service must expose a GET /time endpoint that returns the current UTC time in RFC3339 format",
+    "The response must be JSON with a single 'now' field containing the timestamp string",
+    "The service must run as a standalone HTTP server using Go's net/http package",
+    "The service must listen on port 9090 (configurable via environment variable)",
+    "The service must expose a GET /health endpoint returning 200 OK when healthy",
+    "The service must handle concurrent requests safely",
+    "Response times for /time endpoint must be under 100ms",
+    "The service must log incoming requests and errors to stdout"
+  ],
+  "components": [
+    {
+      "name": "time-service",
+      "componentType": "service",
+      "language": "Go",
+      "dependsOn": [],
+      "entrypoint": "deployment/service",
+      "buildpack": "docker",
+      "appPath": "/time-service",
+      "openAPISpec": "openapi: 3.0.3\ninfo:\n  title: Time Service API\n  description: A lightweight HTTP service that returns the current UTC time in RFC3339 format\n  version: 1.0.0\nservers:\n  - url: http://localhost:9090\n    description: Local development server\npaths:\n  /time:\n    get:\n      summary: Get current UTC time\n      description: Returns the current UTC time in RFC3339 format\n      operationId: getCurrentTime\n      responses:\n        '200':\n          description: Successful response with current UTC time\n          content:\n            application/json:\n              schema:\n                type: object\n                required:\n                  - now\n                properties:\n                  now:\n                    type: string\n                    format: date-time\n                    description: Current UTC time in RFC3339 format\n                    example: '2024-01-15T14:30:45Z'\n        '500':\n          description: Internal server error\n          content:\n            application/json:\n              schema:\n                type: object\n                properties:\n                  error:\n                    type: string\n                    example: 'Internal server error'\n  /health:\n    get:\n      summary: Health check endpoint\n      description: Returns service health status\n      operationId: healthCheck\n      responses:\n        '200':\n          description: Service is healthy\n          content:\n            application/json:\n              schema:\n                type: object\n                required:\n                  - status\n                properties:\n                  status:\n                    type: string\n                    example: 'ok'\n",
+      "componentAgentInstructions": "Implement a Go HTTP service using net/http that provides UTC time. Create a main.go file in /time-service directory. The service must listen on port 9090 (read from PORT environment variable, default 9090). Implement two handlers: 1) GET /time - call time.Now().UTC() and format using RFC3339, return JSON {\"now\": \"\u003ctimestamp\u003e\"}. Set Content-Type to application/json. Handle any formatting errors with 500 status. 2) GET /health - return 200 status with JSON {\"status\": \"ok\"}. Use http.ServeMux for routing. Add middleware for logging each request (method, path, status code) to stdout. Ensure thread-safe access to time functions. Create a Dockerfile with golang:1.21-alpine as builder, copy go.mod/go.sum if present (or just main.go), build static binary with CGO_ENABLED=0, use scratch as final image, expose port 9090, set CMD to run the binary. The service should gracefully handle SIGTERM by finishing in-flight requests. Add basic error handling for port binding failures. No external dependencies beyond standard library. Ensure all responses have proper JSON content-type headers. The /time endpoint should have negligible processing time since it's just a timestamp generation. Include a README.md with build and run instructions."
+    }
+  ],
+  "sourceSpec": "spec-v1"
+}
